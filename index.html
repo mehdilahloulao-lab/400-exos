@@ -340,6 +340,10 @@ mjx-container.mwide{display:block!important;max-width:100%;overflow-x:auto;overf
 .focusbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:2px 0 6px}
 .focusbar .fl{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px}
 .fgroups{display:flex;flex-wrap:wrap;gap:6px}
+.flvbar{margin-top:0}
+.flvbar .lv{margin:0}
+#flv button{display:inline-flex;align-items:center;min-height:30px}
+.flvnow .lv{margin:0 4px 0 2px;vertical-align:-1px}
 .fgroups button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 13px;font-size:13px;cursor:pointer}
 .fgroups button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 #fselect{background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;max-width:100%}
@@ -362,8 +366,16 @@ mjx-container.mwide{display:block!important;max-width:100%;overflow-x:auto;overf
 .fp-row .bar{height:5px}
 .fp-eta{font-size:12.5px;color:var(--faint)}
 @media (max-width:560px){.fp-row{grid-template-columns:minmax(0,1fr) auto}.fp-row .bar{grid-column:1 / -1;order:3}}
-.lv{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;line-height:1;padding:3px 6px;border-radius:999px;margin-right:6px;vertical-align:1px;font-variant-numeric:tabular-nums}
-.lv.l1{background:var(--ok);color:#fff}.lv.l2{background:transparent;color:var(--redo);box-shadow:inset 0 0 0 1px var(--redo)}.lv.l3{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+.lv{display:inline-flex;align-items:center;gap:5px;margin-right:8px;vertical-align:-2px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+.lv svg{width:40px;height:13px;display:block}
+.lv path.off{fill:none;stroke:var(--line);stroke-width:1}
+.lv.l1{color:#f2c14e}.lv.l2{color:#7fc8a9}.lv.l3{color:#9aa7c7}
+.lv.l1 path.on{fill:#f2c14e}.lv.l2 path.on{fill:#7fc8a9}.lv.l3 path.on{fill:#9aa7c7}
+.row .lv{padding:2px 7px 2px 5px;border-radius:999px;background:var(--surface)}
+.row .lv.l1{background:rgba(233,196,106,.12)}
+.lvk{margin-left:8px;font-weight:600;letter-spacing:.06em}
+.lvk.l1{color:#9a7414}.lvk.l2{color:#2f7a4f}.lvk.l3{color:var(--ink-muted)}
+.sheet .lv path.off{stroke:#cfd3cf}
 .foot{font-size:12.5px;color:var(--faint);line-height:1.6}
 @media (max-width:560px){
   :root{--col:42px;--cols:168px}
@@ -428,6 +440,7 @@ mjx-container.mwide{display:block!important;max-width:100%;overflow-x:auto;overf
         <div class="fgroups" id="fgroups"></div>
         <select id="fselect" aria-label="Choisir un chapitre en focus"><option value="">Un chapitre…</option></select>
       </div>
+      <div class="focusbar flvbar"><span class="fl">Étoiles</span><div class="fgroups" id="flv"></div></div>
       <p class="fnow" id="fnow"></p>
       <div class="fprog" id="fprog" hidden></div>
       <ul class="due" id="newlist"></ul>
@@ -444,7 +457,7 @@ mjx-container.mwide{display:block!important;max-width:100%;overflow-x:auto;overf
       <div class="toc" id="toc"></div>
       
     </nav>
-    <p class="rule">Reprises du lundi au vendredi uniquement, comptées en jours ouvrés. « Bloqué » (rien su faire) remet le compteur à zéro et revient le lendemain : le soir même, relis le corrigé puis refais-le de tête. « Pas réussi » remet le compteur à zéro et revient 2 jours après. « À refaire » fait perdre une réussite et revient 4 jours après. Une réussite revient 2 semaines après (1<sup>re</sup>) puis 4 semaines après (2<sup>e</sup>) ; si elle suit un raté, ces délais sont divisés par deux (1 puis 2 semaines). À la 3<sup>e</sup> réussite, un autre jour, l'exercice est maîtrisé et sort des reprises. Au plus <span id="rule-cap">12</span> reprises par jour (réglable) : les plus en retard par rapport à leur délai passent d'abord, puis les échecs et les ★. S'il reste des reprises en retard au-delà du plafond, le focus du jour propose moins d'exercices (un de moins par tranche de 4 en retard, jamais moins d'un). Niveaux de priorité (d'après les annales emlyon, EDHEC, Maths I et II) : N1 indispensable, N2 très important, N3 important ; sans badge, bonus. Le focus et les reprises passent les N1 d'abord. Les exercices du focus viennent d'abord des chapitres choisis, un sous-chapitre après l'autre, avec un exercice hors focus chaque jour.</p>
+    <p class="rule">Reprises du lundi au vendredi uniquement, comptées en jours ouvrés. « Bloqué » (rien su faire) remet le compteur à zéro et revient le lendemain : le soir même, relis le corrigé puis refais-le de tête. « Pas réussi » remet le compteur à zéro et revient 2 jours après. « À refaire » fait perdre une réussite et revient 4 jours après. Une réussite revient 2 semaines après (1<sup>re</sup>) puis 4 semaines après (2<sup>e</sup>) ; si elle suit un raté, ces délais sont divisés par deux (1 puis 2 semaines). À la 3<sup>e</sup> réussite, un autre jour, l'exercice est maîtrisé et sort des reprises. Au plus <span id="rule-cap">12</span> reprises par jour (réglable) : les plus en retard par rapport à leur délai passent d'abord, puis les échecs et les ★. S'il reste des reprises en retard au-delà du plafond, le focus du jour propose moins d'exercices (un de moins par tranche de 4 en retard, jamais moins d'un). Niveaux de priorité (d'après les annales emlyon, EDHEC, Maths I et II) : ★★★ dorées = indispensable, ★★ vertes = très important, ★ bleue = important ; sans étoiles, bonus. Le focus et les reprises passent les indispensables d'abord. Les exercices du focus viennent d'abord des chapitres choisis, un sous-chapitre après l'autre, avec un exercice hors focus chaque jour.</p>
     <details class="reglages"><summary>Réglages</summary>
       <div class="rg">
         <p><b>Clé Gemini</b> · <span id="rg-keystate"></span></p>
@@ -543,11 +556,14 @@ const NEED = 3;
 const GAP = {1: 2, 2: 4};            // après « pas réussi » : 2 j ouvrés ; après « à refaire » : 4 j ouvrés
 const GAP_BLK = 1;                   // après « bloqué » (rien su faire) : le lendemain (ce soir : relire le corrigé et le refaire de tête)
 const GAP_WIN = {1: 10, 2: 20};      // après la 1re réussite : 2 semaines ; après la 2e : 4 semaines ; la 3e = maîtrisé, sorti
-let settings = {newPerDay: 4, cap: 12, focus: [15, 16, 17, 18]};   // réglables dans l'app
+let settings = {newPerDay: 4, cap: 12, focus: [15, 16, 17, 18], lvl: "auto"};   // réglables dans l'app
 let prioOv = {};                     // étoiles modifiées à la main (sinon PRIO_DEFAULT)
 const isPrio = id => (id in prioOv) ? !!prioOv[id] : PRIO_DEFAULT.has(id);
 /* Niveaux de priorité : 1 indispensable, 2 très important, 3 important, 4 = non prioritaire (bonus) */
 const LV_NAME = {1: "Indispensable", 2: "Très important", 3: "Important"};
+/* Icône « barres de signal » : 3 barres pleines = indispensable, 2 = très important, 1 = important */
+const STAR_P = "M6 .8l1.55 3.2 3.5.5-2.53 2.47.6 3.48L6 8.8 2.88 10.45l.6-3.48L.95 4.5l3.5-.5z";
+const lvIcon = L => `<svg viewBox="0 0 37 12" aria-hidden="true">${[0, 1, 2].map(i => `<path transform="translate(${i * 12.5} 0)" d="${STAR_P}" class="${i < 4 - L ? "on" : "off"}"/>`).join("")}</svg>`;
 const lvlOf = id => isPrio(id) ? ((typeof PRIO_LEVEL !== "undefined" && PRIO_LEVEL[id]) || 3) : 4;
 const HORIZON = 10;                  // la timeline montre les 10 prochains jours ouvrés
 const LABEL = {0: "Bloqué", 1: "Pas réussi", 2: "À refaire", 3: "Réussi"};
@@ -735,7 +751,7 @@ function build(){
         <button class="fbtn" id="fbtn-${c.ch}" data-ch="${c.ch}"></button>
       </header>
       <div class="tabs" role="tablist" aria-label="Filtrer">
-        ${[["all","Tous"],["prio","Prioritaires"],["due","À reprendre"],["work","En cours"],["todo","Pas faits"],["ok","Maîtrisés"]].map(([f,l]) =>
+        ${[["all","Tous"],["l1",`<span class="lv l1">${lvIcon(1)}</span>`],["l2",`<span class="lv l2">${lvIcon(2)}</span>`],["l3",`<span class="lv l3">${lvIcon(3)}</span>`],["due","À reprendre"],["work","En cours"],["todo","Pas faits"],["ok","Maîtrisés"]].map(([f,l]) =>
           `<button role="tab" id="tab-${c.ch}-${f}" data-f="${f}" aria-selected="${f === "all"}">${l}<span class="c"></span></button>`).join("")}
       </div>`;
     v.querySelector("h2").textContent = c.title;
@@ -786,32 +802,48 @@ function setBar(el, c, total){
 const CATS = [[4,"Maîtrisé","d-ok"],[3,"Réussi 1–2 fois","d-val"],[2,"À refaire","d-redo"],[1,"Pas réussi ou bloqué","d-miss"],[0,"Pas encore fait","d-todo"]];
 function match(f, r, id){
   const k = cat(r);
-  return f === "all" || (f === "prio" && isPrio(id)) || (f === "due" && isDue(r)) || (f === "work" && k >= 1 && k <= 3) || (f === "todo" && k === 0) || (f === "ok" && k === 4);
+  return f === "all" || (f === "prio" && isPrio(id)) || (/^l[123]$/.test(f) && lvlOf(id) === +f[1]) || (f === "due" && isDue(r)) || (f === "work" && k >= 1 && k <= 3) || (f === "todo" && k === 0) || (f === "ok" && k === 4);
 }
 
 
 /* ---------- Nouveaux du jour ---------- */
 const SECS = []; for(const c of BOOK) for(const s of c.sections) SECS.push({ch: c.ch, id: s.id, ids: s.ex.map(x => idOf(c.ch, x[0]))});
-function pickFrom(chs, k, taken){
+function pickFrom(chs, k, taken, allow){
+  const ok = id => !state[id] && !taken.has(id) && (!allow || allow(id));
   // couvre les sous-chapitres l'un après l'autre : on prend dans le sous-chapitre le moins entamé, exercices ★ d'abord
   const out = [];
   const tried = {}; SECS.forEach(s => tried[s.id] = s.ids.filter(id => state[id] || taken.has(id)).length);
   for(const ch of chs){
     while(out.length < k){
-      const secs = SECS.filter(s => s.ch === ch && s.ids.some(id => !state[id] && !taken.has(id)));
+      const secs = SECS.filter(s => s.ch === ch && s.ids.some(ok));
       if(!secs.length) break;
       secs.sort((a, b) => {
-        const best = s => Math.min(4, ...s.ids.filter(id => !state[id] && !taken.has(id)).map(lvlOf));
+        const best = s => Math.min(4, ...s.ids.filter(ok).map(lvlOf));
         const pa = best(a), pb = best(b);
         return (pa - pb) || (tried[a.id] - tried[b.id]) || (SECS.indexOf(a) - SECS.indexOf(b));
       });
       const s = secs[0];
-      const cand = s.ids.filter(id => !state[id] && !taken.has(id)).sort((a, b) => lvlOf(a) - lvlOf(b))[0];
+      const cand = s.ids.filter(ok).sort((a, b) => lvlOf(a) - lvlOf(b))[0];
       out.push(cand); taken.add(cand); tried[s.id]++;
     }
     if(out.length >= k) break;
   }
   return out;
+}
+/* Niveau d'étoiles du focus : « auto » = le niveau le plus haut qui reste à commencer dans le thème ; 1/2/3 = ce niveau seulement ; "all" = tout */
+function focusLevel(focus){
+  const todo = EX.filter(e => focus.includes(e.ch) && !state[e.id]);
+  const left = L => todo.filter(e => lvlOf(e.id) === L).length;
+  const m = settings.lvl || "auto";
+  if(m === "all" || !focus.length) return {mode: "all", allow: null};
+  if(m === "auto"){
+    const L = [1, 2, 3, 4].find(x => left(x)) || 4;
+    return {mode: "auto", L, allow: id => lvlOf(id) === L, left: left(L)};
+  }
+  const L = +m;
+  if(left(L)) return {mode: "fixed", L, allow: id => lvlOf(id) === L, left: left(L)};
+  const nxt = [1, 2, 3, 4].find(x => x > L && left(x)) || 4;      // ce niveau est fini : on passe au suivant
+  return {mode: "done", L, next: nxt, allow: id => lvlOf(id) === nxt, left: left(nxt)};
 }
 /* Retard de reprises au début de la journée (au-delà du plafond) → moins d'exercices du focus ce jour-là */
 function reviewBacklog(){
@@ -832,7 +864,8 @@ function newOfDay(){
   const taken = new Set();
   let wantF = Math.max(0, focusSlots - doneF), wantO = Math.max(0, otherSlots - doneO);
   const rem = Math.max(0, N - done.length); wantF = Math.min(wantF, rem); wantO = Math.min(wantO, rem - wantF);
-  const sugF = pickFrom(focus, wantF, taken);
+  const LV = focusLevel(focus);
+  const sugF = pickFrom(focus, wantF, taken, LV.allow);
   // hors focus : chapitre (analyse/algèbre d'abord) dont les ★ sont les moins entamés
   const others = BOOK.map(c => c.ch).filter(ch => !focus.includes(ch));
   const score = ch => { const ids = EX.filter(e => e.ch === ch && isPrio(e.id)); const all = ids.length ? ids : EX.filter(e => e.ch === ch); return all.filter(e => state[e.id]).length / Math.max(1, all.length); };
@@ -841,7 +874,7 @@ function newOfDay(){
   let sugO = pickFrom(others, wantO, taken);
   let extra = rem - sugF.length - sugO.length;
   if(extra > 0) sugO = sugO.concat(pickFrom(focus.concat(others), extra, taken));
-  return {done, sug: sugF.concat(sugO), N, backlog, full: settings.newPerDay};
+  return {done, sug: sugF.concat(sugO), N, backlog, full: settings.newPerDay, LV};
 }
 function weekStats(){
   const mon = workToday(); while(mon.getDay() !== 1) mon.setDate(mon.getDate() - 1);
@@ -877,7 +910,7 @@ function renderFocusProgress(){
   const left = c[0], weeks = Math.ceil(left / Math.max(1, perDay) / 5);
   const cc = c.slice(); cc.t = tot;
   box.innerHTML = `<div class="fp-head"><div class="fp-big">${pct}%<small>du focus maîtrisé</small></div>
-      <div class="fp-kpis"><span><b>${c[4]}</b>/${tot} maîtrisés</span><span><b>${started}</b> commencés</span>${[1, 2, 3].map(L => { const g = exs.filter(e => lvlOf(e.id) === L); return g.length ? `<span>N${L} <b>${g.filter(e => cat(state[e.id]) === 4).length}</b>/${g.length}</span>` : ""; }).join("")}<span><b>${secT}</b>/${secs.length} sous-chapitres entamés</span></div></div>
+      <div class="fp-kpis"><span><b>${c[4]}</b>/${tot} maîtrisés</span><span><b>${started}</b> commencés</span>${[1, 2, 3].map(L => { const g = exs.filter(e => lvlOf(e.id) === L); return g.length ? `<span title="${LV_NAME[L]}"><span class="lv l${L}">${lvIcon(L)}</span><b>${g.filter(e => cat(state[e.id]) === 4).length}</b>/${g.length}</span>` : ""; }).join("")}<span><b>${secT}</b>/${secs.length} sous-chapitres entamés</span></div></div>
     ${bar(cc)}
     <div class="fp-rows">${rows}</div>
     <div class="fp-eta">${left ? `Encore ${left} exercice${left > 1 ? "s" : ""} jamais commencé${left > 1 ? "s" : ""} : à ${perDay} par jour dans le focus, environ ${weeks} semaine${weeks > 1 ? "s" : ""} pour tous les avoir commencés.` : "Tous les exercices du focus sont commencés : il reste à les faire passer en maîtrisé via les reprises."}</div>`;
@@ -900,13 +933,22 @@ function renderNew(){
   const names = f.map(ch => { const c = BOOK.find(x => x.ch === ch); return c ? `${ch}. ${c.title.replace(/\$.*?\$/g, "").trim()}` : ""; }).filter(Boolean);
   $("#fnow").innerHTML = f.length ? `En ce moment : <b></b>` : `Aucun thème choisi : les exercices viennent des ★ de tout le livre.`;
   if(f.length) $("#fnow b").textContent = f.length > 3 ? `chapitres ${f.join(", ")}` : names.join(" · ");
+  document.querySelectorAll("#flv button").forEach(b => b.setAttribute("aria-pressed", String(String(settings.lvl || "auto") === b.dataset.l)));
+  if(f.length && R.LV){
+    const LV = R.LV, nm = L => L <= 3 ? `<span class="lv l${L}">${lvIcon(L)}</span>${LV_NAME[L].toLowerCase()}` : "exercices sans étoile";
+    const s = document.createElement("span"); s.className = "flvnow";
+    s.innerHTML = LV.mode === "all" ? " · toutes les étoiles, les plus importantes d'abord"
+      : LV.mode === "done" ? ` · ${nm(LV.L)} : tous commencés ✓, place aux ${nm(LV.next)} (${LV.left} à faire)`
+      : ` · ${nm(LV.L)} uniquement (${LV.left} à faire)${LV.mode === "auto" ? ", puis le niveau suivant" : ""}`;
+    $("#fnow").appendChild(s);
+  }
   for(const c of BOOK){ const b = document.getElementById("fbtn-" + c.ch); if(!b) continue; const on = f.length === 1 && f[0] === c.ch; b.classList.toggle("on", on); b.textContent = on ? "✓ Chapitre en focus" : (f.includes(c.ch) ? "Dans le focus · ne garder que ce chapitre" : "Mettre ce chapitre en focus"); }
-  const sig = R.done.map(e => e.id + ":" + state[e.id].s).join(",") + "|" + R.sug.join(",") + "|" + R.sug.map(isPrio).join("");
+  const sig = R.done.map(e => e.id + ":" + state[e.id].s).join(",") + "|" + R.sug.join(",") + "|" + R.sug.map(lvlOf).join("");
   if(sig === lastNewSig) return; lastNewSig = sig;
   const ul = $("#newlist"); clearTex(ul); ul.innerHTML = "";
   const row = (id, doneRec) => {
     const e = EXBY[id], li = document.createElement("li"); if(doneRec) li.className = "done";
-    li.innerHTML = `<a href="${hashOf(id)}"><span class="ref">Ch. ${e.ch} · ${e.n}</span><span class="ti">${lvlOf(id) <= 3 ? `<span class="lv l${lvlOf(id)}">N${lvlOf(id)}</span>` : ""}<span class="tt"></span></span><span class="st">${doneRec ? `<b>${labelOf(doneRec)}</b><span>fait</span>` : `<b class="newtag">À faire</b><span>${e.chTitle.length > 22 ? "Ch. " + e.ch : e.chTitle}</span>`}</span></a>`;
+    li.innerHTML = `<a href="${hashOf(id)}"><span class="ref">Ch. ${e.ch} · ${e.n}</span><span class="ti">${lvlOf(id) <= 3 ? `<span class="lv l${lvlOf(id)}" title="${LV_NAME[lvlOf(id)]}">${lvIcon(lvlOf(id))}</span>` : ""}<span class="tt"></span></span><span class="st">${doneRec ? `<b>${labelOf(doneRec)}</b><span>fait</span>` : `<b class="newtag">À faire</b><span>${e.chTitle.length > 22 ? "Ch. " + e.ch : e.chTitle}</span>`}</span></a>`;
     li.querySelector(".tt").textContent = e.title || "Exercice " + e.n;
     ul.appendChild(li);
   };
@@ -923,6 +965,13 @@ function buildSetup(){
     const b = document.createElement("button"); b.textContent = name; b.dataset.g = name; b.id = "fg-" + name;
     b.onclick = () => { settings = {...settings, focus: sameSet(settings.focus, chs) ? [] : chs.slice()}; saveSettings(); };
     fg.appendChild(b);
+  }
+  const flv = $("#flv");
+  for(const [l, html] of [["auto", "Auto"], ["1", lvIcon(1)], ["2", lvIcon(2)], ["3", lvIcon(3)], ["all", "Tout"]]){
+    const b = document.createElement("button"); b.dataset.l = l; b.innerHTML = /^\d$/.test(l) ? `<span class="lv l${l}">${html}</span>` : html;
+    b.title = {auto: "Le niveau le plus important qui reste, puis le suivant", all: "Toutes les étoiles", 1: "Indispensables seulement", 2: "Très importants seulement", 3: "Importants seulement"}[l];
+    b.onclick = () => { settings = {...settings, lvl: l}; lastNewSig = null; saveSettings(); };
+    flv.appendChild(b);
   }
   const sel = $("#fselect");
   for(const c of BOOK){ const o = document.createElement("option"); o.value = c.ch; o.textContent = `${c.ch}. ${c.title.replace(/\$.*?\$/g, "").trim()}`; sel.appendChild(o); }
@@ -1020,7 +1069,7 @@ function refresh(){
     v.querySelector('[data-f="work"] .c').textContent = cc[1] + cc[2] + cc[3];
     v.querySelector('[data-f="todo"] .c').textContent = cc[0];
     v.querySelector('[data-f="ok"] .c').textContent = cc[4];
-    v.querySelector('[data-f="prio"] .c').textContent = exs.filter(e => isPrio(e.id)).length;
+    [1, 2, 3].forEach(L => { v.querySelector(`[data-f="l${L}"] .c`).textContent = exs.filter(e => lvlOf(e.id) === L && cat(state[e.id]) !== 4).length; });
     for(const s of c.sections){
       let visible = 0;
       for(const [n] of s.ex){
@@ -1034,7 +1083,7 @@ function refresh(){
         r3.setAttribute("aria-label", `Réussi${r?.n ? ` (${r.n}/${NEED})` : ""}`);
         row.querySelector(".when").innerHTML = k ? " · " + statusLine(r) : "";
         const st = row.querySelector(".star"), pOn = isPrio(id), lvE = row.querySelector(".lv"), L = lvlOf(id);
-        lvE.hidden = L > 3; lvE.className = "lv l" + L; lvE.textContent = L <= 3 ? "N" + L : ""; lvE.title = LV_NAME[L] || "";
+        lvE.hidden = L > 3; lvE.className = "lv l" + L; lvE.innerHTML = L <= 3 ? lvIcon(L) + `<span>${LV_NAME[L]}</span>` : ""; lvE.title = LV_NAME[L] || ""; lvE.setAttribute("aria-label", LV_NAME[L] || "");
         st.setAttribute("aria-pressed", String(pOn)); st.title = pOn ? "Prioritaire (cliquer pour retirer)" : "Marquer comme prioritaire";
         row.hidden = !match(f, r, id);
         if(!row.hidden) visible++;
@@ -1055,7 +1104,7 @@ function openSheet(id){
   openId = id;
   const content = CONTENT[id] || {e: `<p class="note">Cet énoncé n'est pas encore retranscrit. Tu le trouves page ${e.p} du livre.</p>`, c: ""};
   $("#sh-crumb").textContent = `Chapitre ${e.ch} · ${e.chTitle}`;
-  { const L = lvlOf(id); $("#sh-kicker").textContent = `Exercice ${e.n} · page ${e.p}` + (L <= 3 ? ` · Niveau ${L} : ${LV_NAME[L].toLowerCase()}` : ""); }
+  { const L = lvlOf(id); $("#sh-kicker").innerHTML = `Exercice ${e.n} · page ${e.p}` + (L <= 3 ? ` <span class="lv lvk l${L}">${lvIcon(L)}${LV_NAME[L]}</span>` : ""); }
   $("#sh-title").textContent = `Exercice ${e.n}`;
   [$("#sh-sub"), $("#sh-stmt"), $("#sh-sol-body")].forEach(clearTex);
   $("#sh-sub").textContent = e.title;
