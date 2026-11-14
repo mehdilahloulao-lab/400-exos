@@ -1579,10 +1579,19 @@ document.addEventListener("change", async e => {
   const f = e.target.files && e.target.files[0]; const st = $("#rg-msg"); if(!f || !window.FB || !fbUser) return;
   try{
     const data = JSON.parse(await f.text()); st.textContent = "Import en cours…";
-    let n = 0;
-    for(const [col, obj] of Object.entries(data)){ if(obj && typeof obj === "object"){ n += await window.FB.batchSet(fbUser.uid, col, obj); } }
-    st.textContent = `Import terminé : ${n} éléments.`;
-  }catch(err){ st.textContent = "Fichier illisible."; }
+    let n = 0, fails = [];
+    const order = Object.keys(data).sort((a, b) => (a === "content" ? -1 : 0) - (b === "content" ? -1 : 0));   // énoncés d'abord
+    const total = order.reduce((s, c) => s + (data[c] && typeof data[c] === "object" ? Object.keys(data[c]).length : 0), 0);
+    for(const col of order){
+      const obj = data[col]; if(!obj || typeof obj !== "object") continue;
+      for(const [id, v] of Object.entries(obj)){
+        try{ await window.STORE.collection(col).doc(id).set(v); n++; }
+        catch(err){ fails.push(`${col}/${id} : ${(err && (err.code || err.message)) || err}`); }
+        st.textContent = `Import en cours… ${n + fails.length} / ${total}`;
+      }
+    }
+    st.textContent = fails.length ? `Import : ${n} éléments enregistrés, ${fails.length} en échec. ${fails.slice(0, 3).join(" · ")}` : `Import terminé : ${n} éléments (énoncés et corrigés compris).`;
+  }catch(err){ st.textContent = "Fichier illisible : " + ((err && err.message) || err); }
   e.target.value = "";
 });
 
