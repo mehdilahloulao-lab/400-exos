@@ -229,6 +229,11 @@ mjx-container.mwide{display:block;overflow-x:auto;overflow-y:hidden;max-width:10
 .card .rr{font-family:"CMU Serif",Georgia,serif;font-size:16.5px;line-height:1.55}
 .card .rr p{margin:0 0 .5em}
 .intro{font-size:14px;color:var(--muted);max-width:62ch;margin:0}
+.partbox{background:var(--panel2,#1b1d20);border-left:3px solid var(--gold,#d4a72c);padding:8px 12px;border-radius:6px;margin:10px 0;font-size:.92rem}
+.pt{color:var(--faint,#8a8f98);font-weight:400;font-size:.85em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line,#33363b);background:transparent;color:inherit;border-radius:999px;padding:5px 11px;font:inherit;font-size:.82rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--green,#2f8f5b);border-color:var(--green,#2f8f5b);color:#fff}
 
 .login{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px max(16px, env(safe-area-inset-left, 0px))}
 .lg-card{width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;text-align:center}
@@ -286,7 +291,12 @@ const SEEN = {"edhec-1994-ex": [["EDHEC", "1994"], ["HEC Maths II", "2025"], ["e
 
 /* ---------- Données ---------- */
 const CH = {9:"Fonctions d'une variable réelle", 10:"Suites", 11:"Intégration sur un segment", 12:"Séries", 13:"Intégrales généralisées", 14:"Fonctions de plusieurs variables"};
-const CH_ORDER = [10, 11, 12, 13, 14, 9];
+Object.assign(CH, {20:"Compléments d'algèbre linéaire (somme directe, changement de base, trace)", 21:"Réduction des endomorphismes et des matrices", 22:"Algèbre bilinéaire et espaces euclidiens", 23:"Polynômes", 30:"Variables aléatoires discrètes et lois usuelles", 31:"Variables à densité", 32:"Couples et n-uplets de variables aléatoires", 33:"Convergences, approximations et estimation"});
+const CH_ORDER = [10, 11, 12, 13, 14, 9, 20, 21, 22, 23, 30, 31, 32, 33];
+const DOM = {9:"Analyse", 10:"Analyse", 11:"Analyse", 12:"Analyse", 13:"Analyse", 14:"Analyse", 20:"Algèbre", 21:"Algèbre", 22:"Algèbre", 23:"Algèbre", 30:"Probabilités", 31:"Probabilités", 32:"Probabilités", 33:"Probabilités"};
+const CAP = 45;   // temps maximum d'un bloc de travail (minutes)
+const TIER_NAME = {socle: "Socle", pont: "Pont", hp: "Parisien"}, TIER_ORD = {socle: 0, pont: 1, hp: 2};
+const tierOf = x => x.tier || (/^Oral/.test(x.conc || "") ? "pont" : /^(EDHEC|emlyon)$/.test(x.conc || "") ? "socle" : "hp");
 const slug = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const ITEMS = []; const BY = {};
 { const cnt = {};
@@ -298,7 +308,24 @@ const ITEMS = []; const BY = {};
     ITEMS.push(x); BY[x.id] = x;
   }
 }
-const EXS = ITEMS.filter(x => x.kind === "ex"), PBS = ITEMS.filter(x => x.kind === "pb");
+const EXS = [], PBS = ITEMS.filter(x => x.kind === "pb");
+const qrange = x => x.qs.length ? (x.qs[0].id === x.qs[x.qs.length - 1].id ? "Q" + x.qs[0].id : "Q" + x.qs[0].id + " → Q" + x.qs[x.qs.length - 1].id) : "";
+function splitBlocs(x){
+  const tot = x.qs.reduce((s, q) => s + q.min, 0);
+  if(tot <= CAP || x.qs.length < 2) return [x];
+  const k = Math.ceil(tot / CAP), tgt = tot / k, parts = []; let cur = [], m = 0;
+  for(const q of x.qs){
+    if(cur.length && (m + q.min > CAP || (m >= tgt && parts.length < k - 1))){ parts.push(cur); cur = []; m = 0; }
+    cur.push(q); m += q.min;
+  }
+  if(cur.length) parts.push(cur);
+  return parts.map((qs, i) => ({...x, id: x.id + "#" + (i + 1), base: x.id, part: i + 1, nparts: parts.length, qs, dur: qs.reduce((s, q) => s + q.min, 0)}));
+}
+for(const x of ITEMS.filter(x => x.kind === "ex")){
+  const ps = splitBlocs(x);
+  if(ps.length > 1){ x.parts = ps; ps.forEach(q => { BY[q.id] = q; EXS.push(q); }); } else EXS.push(x);
+}
+const xt = x => x.t + (x.part ? ` <span class="pt">· partie ${x.part}/${x.nparts} (${qrange(x)})</span>` : "");
 function addItem(x){
   if(BY[x.id]) return;
   x.qs = x.qs || []; x.qs.forEach(q => { q.imp = q.imp || 2; q.min = q.min || 5; q.deps = q.deps || []; });
@@ -317,7 +344,10 @@ const fmtD = t => { const d = new Date(t), n = daysBetween(today0(), t); if(n ==
 let EX = {};   // id -> {s:0..3, n:nb de réussites d'affilée, due, last, h:[[t,s]]}
 let PQ = {};   // id -> {qid: {r, st, sk, due, last, h}}
 let CN = {};   // id -> {item, q, r, ch, at}
-let SET = {bEx: 60, bPb: 90};
+let SET = {bEx: 60, bPb: 90, seenCh: {}};
+let inTime = false;
+const noneSeen = () => !Object.values(SET.seenCh || {}).some(Boolean);
+const isSeen = c => noneSeen() || !!(SET.seenCh || {})[c];
 let db = null, sampleFn = null;
 
 /* ---------- Exercices : répétition espacée ----------
@@ -325,11 +355,15 @@ let db = null, sampleFn = null;
 const S_LABEL = ["Bloqué", "Pas réussi", "À refaire", "Réussi"];
 const S_GAP = {0: 1, 1: 2, 2: 4};
 const OK_GAP = [10, 25];
-function markEx(id, s){
+function markEx(id, s, inTime){
   const r = EX[id] ? {...EX[id]} : {n: 0, h: []};
   const t = today0();
-  r.s = s; r.last = t; r.h = [...(r.h || []), [t, s]].slice(-12);
-  if(s === 3){ r.n = (r.n || 0) + 1; r.due = r.n >= 3 ? null : addDays(t, OK_GAP[r.n - 1]); }
+  r.s = s; r.last = t; r.h = [...(r.h || []), [t, s]].slice(-12); r.slow = false;
+  if(s === 3){
+    r.n = (r.n || 0) + 1;
+    if(r.n >= 3 && !inTime){ r.n = 2; r.slow = true; r.due = addDays(t, 7); }   // 3e réussite hors temps cible : pas encore maîtrisé
+    else r.due = r.n >= 3 ? null : addDays(t, OK_GAP[r.n - 1]);
+  }
   else { r.n = 0; r.due = addDays(t, S_GAP[s]); }
   EX[id] = r; save("ex2", id, r);
 }
@@ -394,7 +428,7 @@ function planProblems(budget){
     for(const q of p.qs){ const o = P[q.id]; if(o && !o.done && o.due != null && o.due <= t) cands.push({p, q, o, sc: qScore(p, q, o, t), late: daysBetween(o.due, t)}); }
   }
   cands.sort((a, b) => b.sc - a.sc);
-  const chosen = new Map();   // pid -> Set(qid)
+  const chosen = new Map(), spent = new Map();   // pid -> Set(qid) ; pid -> minutes déjà prévues
   const add = (p, q) => { if(!chosen.has(p.id)) chosen.set(p.id, new Set()); chosen.get(p.id).add(q.id); };
   const costOf = (p, q) => Math.ceil(q.min * RETAKE);
   for(const c of cands){
@@ -407,6 +441,8 @@ function planProblems(budget){
     walk(c.q);
     const extra = (chosen.has(c.p.id) ? 0 : 4) + chain.filter(q => !chosen.get(c.p.id)?.has(q.id)).reduce((s, q) => s + costOf(c.p, q), 0);
     if(extra > left && steps.length + chosen.size > 0) continue;
+    if(chosen.has(c.p.id) && (spent.get(c.p.id) || 0) + extra > CAP) continue;
+    spent.set(c.p.id, (spent.get(c.p.id) || 0) + extra);
     chain.forEach(q => add(c.p, q)); left -= extra;
     if(left <= 0) break;
   }
@@ -423,7 +459,7 @@ function planProblems(budget){
   for(const p of started){
     if(left < 20) break;
     const P = PQ[p.id] || {}, qs = []; let m = 5;
-    for(const q of p.qs){ if(P[q.id] || chosen.get(p.id)?.has(q.id)) continue; if(m + q.min > left && qs.length) break; qs.push(q); m += q.min; }
+    for(const q of p.qs){ if(P[q.id] || chosen.get(p.id)?.has(q.id)) continue; if(m + q.min > Math.min(left, CAP) && qs.length) break; qs.push(q); m += q.min; }
     if(qs.length){ steps.push({kind: "suite", p, qs, min: m, why: "Continuer là où tu t'es arrêté"}); left -= m; }
   }
   // 3. nouveau problème
@@ -434,8 +470,8 @@ function planProblems(budget){
       .sort((a, b) => b.sc - a.sc);
     if(fresh.length){
       const p = fresh[0].p, qs = []; let m = 5;
-      for(const q of p.qs){ if(m + q.min > left && qs.length) break; qs.push(q); m += q.min; }
-      steps.push({kind: "nouveau", p, qs, min: m, why: qs.length === p.qs.length ? "Le sujet en entier, en conditions" : `Commence-le en conditions, jusqu'à ${qn(qs[qs.length - 1].id)}`});
+      for(const q of p.qs){ if(m + q.min > Math.min(left, CAP) && qs.length) break; qs.push(q); m += q.min; }
+      steps.push({kind: "nouveau", p, qs, min: m, why: qs.length === p.qs.length ? "Le sujet en entier" : `Premier bloc (${m} min max), jusqu'à ${qn(qs[qs.length - 1].id)}`});
       left -= m;
     }
   }
@@ -470,12 +506,14 @@ function planExercises(budget){
   }
   // nouveaux : ★ d'abord, chapitres fragiles d'abord, puis ordre du livre
   const weak = chapterWeakness();
-  const fresh = EXS.filter(x => !EX[x.id]).sort((a, b) => (a.lvl || 2) - (b.lvl || 2) || (weak[b.ch] || 0) - (weak[a.ch] || 0) || CH_ORDER.indexOf(a.ch) - CH_ORDER.indexOf(b.ch) || a.year - b.year);
+  let fresh = EXS.filter(x => !EX[x.id] && isSeen(x.ch));
+  if(!fresh.length) fresh = EXS.filter(x => !EX[x.id]);
+  fresh.sort((a, b) => TIER_ORD[tierOf(a)] - TIER_ORD[tierOf(b)] || (a.lvl || 2) - (b.lvl || 2) || (weak[b.ch] || 0) - (weak[a.ch] || 0) || CH_ORDER.indexOf(a.ch) - CH_ORDER.indexOf(b.ch) || a.year - b.year);
   for(const x of fresh){
     if(left < 25) break;
-    const m = x.dur || 45;
+    const m = Math.min(x.dur || 45, CAP);
     if(m > left + 10) continue;
-    steps.push({kind: "nouveau", x, min: m, why: LV_NAME[x.lvl || 2] + " · " + CH[x.ch]}); left -= m;
+    steps.push({kind: "nouveau", x, min: m, why: TIER_NAME[tierOf(x)] + " · " + LV_NAME[x.lvl || 2] + " · " + CH[x.ch]}); left -= m;
   }
   let nx = null, nn = 0;
   for(const x of EXS){ const r = EX[x.id]; if(r && r.due != null && r.due > t){ if(nx == null || r.due < nx){ nx = r.due; nn = 0; } if(r.due === nx) nn++; } }
@@ -512,13 +550,13 @@ function planBox(kind){
   const P = kind === "ex" ? planExercises(budget) : planProblems(budget);
   const opts = kind === "ex" ? [30, 45, 60, 90] : [60, 90, 120, 180];
   const li = P.steps.map(s => {
-    if(kind === "ex") return `<li><a href="#x-${s.x.id}"><div class="w"><span class="tagk k-${s.kind}">${s.kind}</span>${esc(s.x.src)} · <span class="tt">${s.x.t}</span></div><div class="y">${esc(s.why)}</div></a><span class="t">${s.min} min</span></li>`;
+    if(kind === "ex") return `<li><a href="#x-${s.x.id}"><div class="w"><span class="tagk k-${s.kind}">${s.kind}</span>${esc(s.x.src)} · <span class="tt">${xt(s.x)}</span></div><div class="y">${esc(s.why)}</div></a><span class="t">${s.min} min</span></li>`;
     const ids = s.qs.length === s.p.qs.length ? "en entier" : s.qs.length > 6 ? `${qn(s.qs[0].id)} → ${qn(s.qs[s.qs.length - 1].id)}` : s.qs.map(q => qn(q.id)).join(", ");
     return `<li><a href="#p-${s.p.id}"><div class="w"><span class="tagk k-${s.kind}">${s.kind}</span>${esc(s.p.src)} · <b>${ids}</b></div><div class="y"><span class="tt">${s.p.t}</span> — ${esc(s.why)}</div></a><span class="t">${s.min} min</span></li>`;
   }).join("");
   const nxt = P.next ? `Prochaine reprise : <b>${fmtD(P.next.t)}</b> (${P.next.n} ${kind === "ex" ? "exercice" : "question"}${P.next.n > 1 ? "s" : ""})` : "";
   const algo = kind === "ex"
-    ? "Les exercices à reprendre passent d'abord, classés par niveau (★ or avant vert avant bleu) × gravité du dernier résultat × retard. Ensuite viennent les nouveaux : ★ or d'abord, en commençant par le chapitre où tu rates le plus. Rythme : bloqué → lendemain, pas réussi → J+2, à refaire → J+4, réussi → J+10 puis J+25, et la 3e réussite d'affilée le sort de la liste."
+    ? "Chaque exercice est découpé en blocs de 45 min maximum. Un bloc est maîtrisé après 3 réussites, la dernière dans le temps cible. Les blocs à reprendre passent d'abord, classés par niveau (★ or avant vert avant bleu) × gravité du dernier résultat × retard. Ensuite viennent les nouveaux : ★ or d'abord, en commençant par le chapitre où tu rates le plus. Rythme : bloqué → lendemain, pas réussi → J+2, à refaire → J+4, réussi → J+10 puis J+25, et la 3e réussite d'affilée le sort de la liste."
     : "Chaque question corrigée reçoit une date de reprise : faux ou non traité → J+3, puis J+10, puis J+30 ; partiel → J+7, puis J+21 ; juste deux fois d'affilée → acquise. Le jour venu, une question vaut importance (★ classique ×3) × gravité de l'erreur × retard, avec un bonus si d'autres questions ratées en dépendent. On la refait avec ses prérequis ratés, dans l'ordre du sujet. Le budget se remplit dans cet ordre : reprises, problème entamé, puis un nouveau problème (le plus important, de préférence sur un thème où tes exercices coincent) s'il reste 40 min.";
   return `<section class="plan">
     <div class="plan-h"><div><div class="eyebrow">${kind === "ex" ? "Séance d'exercices" : "Prochaine séance de problèmes"}</div><h2>${P.steps.length ? "Fais ça, dans cet ordre" : "Rien à faire aujourd'hui"}</h2>
@@ -533,18 +571,20 @@ function planBox(kind){
 function renderEx(){
   const m = $("#main");
   let h = planBox("ex");
-  h += `<section><div class="block-title"><h2>Par chapitre</h2><span>${EXS.length} exercices officiels</span></div><div class="chap">`;
+  h += `<section class="vu"><div class="block-title"><h2>Vu en classe</h2><span>${noneSeen() ? "rien coché : tout est proposé" : "les nouveaux exercices viennent de ces chapitres"}</span></div><div class="chips">` +
+    CH_ORDER.map(c => `<button class="chip" data-vu="${c}" aria-pressed="${!!(SET.seenCh || {})[c]}" title="${esc(CH[c])}">${c} · ${esc(CH[c].split(" (")[0])}</button>`).join("") + `</div></section>`;
+  h += `<section><div class="block-title"><h2>Par chapitre</h2><span>${EXS.length} blocs de ≤ ${CAP} min</span></div><div class="chap">`;
   for(const c of CH_ORDER){
     const xs = EXS.filter(x => x.ch === c); if(!xs.length) continue;
     const cats = xs.map(x => exCat(EX[x.id]));
     const seg = [[4, "var(--ok)"], [3, "var(--green)"], [2, "var(--redo)"], [1, "var(--miss)"], [0, "var(--blk)"]].map(([k, col]) => { const n = cats.filter(v => v === k).length; return n ? `<span style="width:${n / xs.length * 100}%;background:${col}"></span>` : ""; }).join("");
     const open = openCh === c;
-    h += `<button data-ch="${c}" aria-expanded="${open}"><span class="n">${c}</span><span class="ti">${CH[c]}</span><span class="go">›</span><span class="sub">${xs.length} exercices · ${cats.filter(v => v === 4).length} maîtrisés<span class="bar">${seg}</span></span></button>`;
+    h += `<button data-ch="${c}" aria-expanded="${open}"><span class="n">${c}</span><span class="ti">${CH[c]}</span><span class="go">›</span><span class="sub">${xs.length} blocs · ${cats.filter(v => v === 4).length} maîtrisés<span class="bar">${seg}</span></span></button>`;
     if(open){
       h += `<ul class="list">` + xs.sort((a, b) => (a.lvl || 2) - (b.lvl || 2) || a.year - b.year).map(x => {
         const r = EX[x.id], k = exCat(r);
         const st = k < 0 ? `<span style="color:var(--faint)">pas fait</span>` : k === 4 ? `<span class="c4">maîtrisé</span>` : `<span class="c${k}">${S_LABEL[k].toLowerCase()}${k === 3 ? " " + r.n + "/3" : ""}</span><br><span style="color:var(--faint)">${r.due != null ? (r.due <= today0() ? "à reprendre" : "reprise " + fmtD(r.due)) : ""}</span>`;
-        return `<li><a class="row st${k}" href="#x-${x.id}"><div><div class="t">${x.t}</div><div class="m">${stars(x.lvl)}<span>${esc(x.src)}</span><span>${x.dur} min</span></div></div><div class="s">${st}</div></a></li>`;
+        return `<li><a class="row st${k}" href="#x-${x.id}"><div><div class="t">${xt(x)}</div><div class="m">${stars(x.lvl)}<span>${esc(x.src)}</span><span>${TIER_NAME[tierOf(x)]}</span><span>${x.dur} min</span></div></div><div class="s">${st}</div></a></li>`;
       }).join("") + `</ul>`;
     }
   }
@@ -589,9 +629,10 @@ function sheetHTML(x){
   return `<article class="sheet">
     <div class="sh-top"><a href="#${isPb ? "pb" : "ex"}">← ${isPb ? "Problèmes" : "Exercices"}</a><span>${isPb ? "Problème complet" : "Ch. " + x.ch + " · " + CH[x.ch]}</span></div>
     <div class="sh-body">
-      <div class="meta"><span class="src">${esc(x.src)}</span>${stars(x.lvl, true)}<span>${LV_NAME[x.lvl || 2]}</span><span>≈ ${x.dur} min</span>${seen.length ? `<button class="chipbtn" id="seenBtn" aria-expanded="false">Tombé dans · ${seen.length} <span class="ch">▾</span></button>` : ""}</div>
+      <div class="meta"><span class="src">${esc(x.src)}</span>${stars(x.lvl, true)}<span>${LV_NAME[x.lvl || 2]}</span><span>${TIER_NAME[tierOf(x)]}</span><span>temps cible ${x.dur} min</span>${seen.length ? `<button class="chipbtn" id="seenBtn" aria-expanded="false">Tombé dans · ${seen.length} <span class="ch">▾</span></button>` : ""}</div>
       ${seen.length ? `<ul class="seen" id="seenList" hidden>${seen.map(s => `<li>${esc(s[0])}<span>${esc(s[1])}</span></li>`).join("")}</ul>` : ""}
       <h2>${x.t}</h2>
+      ${x.part ? `<p class="partbox"><b>Partie ${x.part}/${x.nparts} : fais ${qrange(x)}</b> (${x.dur} min). Le reste de l'énoncé sert de contexte.</p>` : ""}
       <div class="enonce">${x.e || "<p><i>Énoncé absent : importe contenu-analyse.json dans Réglages, en bas de la page d’accueil.</i></p>"}</div>
       <div class="reveal" id="revealBox"><button class="btn-line" id="revealBtn">Voir le corrigé</button></div>
       <div class="sol" id="sol" hidden><span class="eyebrow">Corrigé${x.corr ? " · " + esc(x.corr) : ""}</span>${x.c || ""}</div>
@@ -601,7 +642,7 @@ function sheetHTML(x){
 }
 function openItem(id){
   const x = BY[id]; if(!x){ location.hash = "#ex"; return; }
-  cur = x; shots = []; sugg = null; pending = {};
+  cur = x; shots = []; sugg = null; pending = {}; inTime = false;
   const m = $("#main"); m.innerHTML = sheetHTML(x); renderWork();
   window.scrollTo(0, 0);
   $("#seenBtn")?.addEventListener("click", e => { const b = e.currentTarget, l = $("#seenList"); const o = b.getAttribute("aria-expanded") !== "true"; b.setAttribute("aria-expanded", o); l.hidden = !o; });
@@ -615,8 +656,9 @@ function renderWork(){
     <div class="thumbs" id="thumbs">${shots.map(s => `<img src="${s.url}" alt="">`).join("")}</div><div id="verdict">${verdictHTML()}</div></div>`;
   if(x.kind === "ex"){
     const r = EX[x.id];
-    const info = !r ? "Pas encore fait." : `Dernier résultat : ${S_LABEL[r.s].toLowerCase()} (${fmtD(r.last)})` + (exCat(r) === 4 ? " · maîtrisé." : r.due != null ? ` · prochaine reprise ${fmtD(r.due)}.` : "");
-    w.innerHTML = `<div><h3>Résultat de cette tentative</h3><p class="hint">${info}</p></div>
+    const info = !r ? "Pas encore fait." : `Dernier résultat : ${S_LABEL[r.s].toLowerCase()} (${fmtD(r.last)})` + (exCat(r) === 4 ? " · maîtrisé." : r.slow ? " · réussi hors temps : refais-le dans le temps cible pour valider (" + fmtD(r.due) + ")." : r.due != null ? ` · prochaine reprise ${fmtD(r.due)}.` : "");
+    w.innerHTML = `<div><h3>Résultat de cette tentative</h3><p class="hint">${info}</p>
+      <p class="hint"><button class="chip" data-tt="1" aria-pressed="${inTime}">Fait dans le temps cible (≤ ${x.dur} min)</button> Coche-le avant d'enregistrer : la 3<sup>e</sup> réussite ne valide la maîtrise que dans le temps.</p></div>
       <div class="acts">${[0, 1, 2, 3].map(s => `<button class="act a${s}${sugg && sugg.s === s ? " sugg" : ""}" data-s="${s}" aria-pressed="${!!(r && r.last === today0() && r.s === s)}"><span class="dot"></span>${S_LABEL[s]}<small>${s === 0 ? "rien su faire · demain" : s === 1 ? "J+2" : s === 2 ? "J+4" : "J+10, J+25"}</small></button>`).join("")}</div>` + copy;
   } else {
     const P = PQ[x.id] || {}, t = today0();
@@ -646,9 +688,11 @@ function renderWork(){
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if(!b) return;
   if(b.dataset.b){ const v = +b.dataset.b; if(tab === "ex") SET.bEx = v; else SET.bPb = v; save("settings", "main", SET); render(); return; }
+  if(b.dataset.vu){ const c = b.dataset.vu; SET.seenCh = {...(SET.seenCh || {}), [c]: !(SET.seenCh || {})[c]}; save("settings", "main", SET); renderEx(); return; }
+  if(b.dataset.tt){ inTime = !inTime; renderWork(); return; }
   if(b.dataset.ch){ const c = +b.dataset.ch; openCh = openCh === c ? null : c; renderEx(); return; }
   if(b.dataset.del){ const id = b.dataset.del; delete CN[id]; save("carnet2", id, null); renderCarnet(); counts(); return; }
-  if(b.classList.contains("act") && cur){ markEx(cur.id, +b.dataset.s); renderWork(); counts(); return; }
+  if(b.classList.contains("act") && cur){ markEx(cur.id, +b.dataset.s, inTime); renderWork(); counts(); return; }
   if(b.parentElement?.classList.contains("qr") && cur){ const q = b.parentElement.dataset.q, r = +b.dataset.r; if(pending[q] === r) delete pending[q]; else pending[q] = r; renderWork(); return; }
   if(b.id === "saveQ" && cur){ for(const q of cur.qs) if(pending[q.id] != null) markQ(cur.id, q, pending[q.id]); save("pq", cur.id, PQ[cur.id]); pending = {}; sugg = null; renderWork(); counts(); return; }
   if(b.id === "gradeBtn" && cur){ grade(); return; }
@@ -807,6 +851,7 @@ function route(){
 window.addEventListener("hashchange", route);
 let fitT; window.addEventListener("resize", () => { clearTimeout(fitT); fitT = setTimeout(() => fitMath($("#main")), 150); });
 
+function migrateParts(){ for(const x of ITEMS){ if(x.parts && EX[x.id]) for(const p of x.parts) if(!EX[p.id]) EX[p.id] = {...EX[x.id]}; } }
 const rgMsg = () => document.getElementById("rg-msg") || {set textContent(v){}};
 
 /* ================= Version indépendante : Firebase (synchro) + Gemini (indices, corrections) ================= */
@@ -889,7 +934,7 @@ async function appLogin(){
   store.collection("secret").onSnapshot(snap => { snap.docs.forEach(d => { if(d.id === "gemini"){ const v = d.data() || {}; if(v.key && v.key !== gemKey){ gemKey = v.key; lsSet("gemkey", gemKey); renderSettings(); } } }); }, () => {});
   store.collection("content2").onSnapshot(snap => {
     let n = 0;
-    snap.docs.forEach(d => { const v = d.data(); const x = BY[d.id]; if(x && v && v.j){ try{ const o = JSON.parse(v.j); x.e = o.e; x.c = o.c; n++; }catch(e){} } });
+    snap.docs.forEach(d => { const v = d.data(); const x = BY[d.id]; if(x && v && v.j){ try{ const o = JSON.parse(v.j); x.e = o.e; x.c = o.c; (x.parts || []).forEach(q => { q.e = o.e; q.c = o.c; }); n++; }catch(e){} } });
     const empty = !snap.docs.length; const r = document.querySelector(".reglages");
     if(empty && !snap.metadata.fromCache){ rgMsg().textContent = "Énoncés et corrigés absents : importe contenu-analyse.json ici."; if(r) r.open = true; }
     if(cur && cur.e && !document.querySelector("#sol")?.textContent.trim().length) openItem(cur.id);
@@ -973,12 +1018,12 @@ async function init(){
   sampleFn = GEM;
   try{ db = await appLogin(); }catch(e){ db = null; }
   if(!db){
-    try{ const s = JSON.parse(localStorage.getItem("classiques-v2") || "{}"); EX = s.EX || {}; PQ = s.PQ || {}; CN = s.CN || {}; SET = {...SET, ...(s.SET || {})}; }catch(e){}
+    try{ const s = JSON.parse(localStorage.getItem("classiques-v2") || "{}"); EX = s.EX || {}; migrateParts(); PQ = s.PQ || {}; CN = s.CN || {}; SET = {...SET, ...(s.SET || {})}; }catch(e){}
     $("#sync").textContent = "Enregistré sur cet appareil"; if(!cur) render(); else { counts(); renderWork(); } return;
   }
   const timer = setTimeout(() => { $("#sync").textContent = "Synchronisation lente…"; }, 10000);
   const rerender = () => { if(cur){ counts(); renderWork(); } else render(); };
-  db.collection("ex2").onSnapshot(snap => { const o = {}; snap.docs.forEach(d => { const v = d.data(); if(v && v.s != null) o[d.id] = v; }); EX = o; rerender(); clearTimeout(timer); $("#sync").textContent = "Synchronisé"; }, () => { $("#sync").textContent = "Synchronisation interrompue"; });
+  db.collection("ex2").onSnapshot(snap => { const o = {}; snap.docs.forEach(d => { const v = d.data(); if(v && v.s != null) o[d.id] = v; }); EX = o; migrateParts(); rerender(); clearTimeout(timer); $("#sync").textContent = "Synchronisé"; }, () => { $("#sync").textContent = "Synchronisation interrompue"; });
   db.collection("pq").onSnapshot(snap => { const o = {}; snap.docs.forEach(d => { try{ o[d.id] = JSON.parse(d.data().j); }catch(e){} }); PQ = o; rerender(); }, () => {});
   db.collection("custom2").onSnapshot(snap => { snap.docs.forEach(d => { try{ const x = JSON.parse(d.data().j); x.id = d.id; addItem(x); }catch(e){} }); rerender(); }, () => {});
   db.collection("carnet2").onSnapshot(snap => { const o = {}; snap.docs.forEach(d => { const v = d.data(); if(v && v.q) o[d.id] = v; }); CN = o; rerender(); }, () => {});
