@@ -1,6 +1,6 @@
 {
- "name": "Suivi 400 exos",
- "short_name": "400 exos",
+ "name": "Classiques d'annales",
+ "short_name": "Annales",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
