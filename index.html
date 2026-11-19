@@ -234,6 +234,10 @@ mjx-container.mwide{display:block;overflow-x:auto;overflow-y:hidden;max-width:10
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line,#33363b);background:transparent;color:inherit;border-radius:999px;padding:5px 11px;font:inherit;font-size:.82rem;cursor:pointer}
 .chip[aria-pressed="true"]{background:var(--green,#2f8f5b);border-color:var(--green,#2f8f5b);color:#fff}
+.dom{margin:18px 0 6px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint,#8a8f98)}
+.notebox{margin:12px 0;padding:12px 14px;border:1px solid var(--line,#33363b);border-radius:8px}
+.notebox b{display:block;font-size:1.15rem}
+.notebox small{color:var(--faint,#8a8f98)}
 
 .login{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px max(16px, env(safe-area-inset-left, 0px))}
 .lg-card{width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;text-align:center}
@@ -265,7 +269,6 @@ mjx-container.mwide{display:block;overflow-x:auto;overflow-y:hidden;max-width:10
     <a href="#ex" data-tab="ex">Exercices<span class="c" id="c-ex"></span></a>
     <a href="#pb" data-tab="pb">Problèmes<span class="c" id="c-pb"></span></a>
     <a href="#carnet" data-tab="carnet">Carnet<span class="c" id="c-cn"></span></a>
-    <a href="#atelier" data-tab="atelier">Atelier</a>
   </nav>
 </div></header>
 <main class="wrap" id="main"></main>
@@ -292,8 +295,9 @@ const SEEN = {"edhec-1994-ex": [["EDHEC", "1994"], ["HEC Maths II", "2025"], ["e
 /* ---------- Données ---------- */
 const CH = {9:"Fonctions d'une variable réelle", 10:"Suites", 11:"Intégration sur un segment", 12:"Séries", 13:"Intégrales généralisées", 14:"Fonctions de plusieurs variables"};
 Object.assign(CH, {20:"Compléments d'algèbre linéaire (somme directe, changement de base, trace)", 21:"Réduction des endomorphismes et des matrices", 22:"Algèbre bilinéaire et espaces euclidiens", 23:"Polynômes", 30:"Variables aléatoires discrètes et lois usuelles", 31:"Variables à densité", 32:"Couples et n-uplets de variables aléatoires", 33:"Convergences, approximations et estimation"});
-const CH_ORDER = [10, 11, 12, 13, 14, 9, 20, 21, 22, 23, 30, 31, 32, 33];
+const CH_ORDER = [9, 10, 11, 12, 13, 14, 20, 21, 22, 23, 30, 31, 32, 33];
 const DOM = {9:"Analyse", 10:"Analyse", 11:"Analyse", 12:"Analyse", 13:"Analyse", 14:"Analyse", 20:"Algèbre", 21:"Algèbre", 22:"Algèbre", 23:"Algèbre", 30:"Probabilités", 31:"Probabilités", 32:"Probabilités", 33:"Probabilités"};
+const chNum = c => CH_ORDER.filter(k => DOM[k] === DOM[c]).indexOf(c) + 1;   // numérotation 1, 2, 3… par domaine
 const CAP = 45;   // temps maximum d'un bloc de travail (minutes)
 const TIER_NAME = {socle: "Socle", pont: "Pont", hp: "Parisien"}, TIER_ORD = {socle: 0, pont: 1, hp: 2};
 const tierOf = x => x.tier || (/^Oral/.test(x.conc || "") ? "pont" : /^(EDHEC|emlyon)$/.test(x.conc || "") ? "socle" : "hp");
@@ -413,6 +417,25 @@ function themeWeakness(){
   const w = {};
   for(const x of EXS){ const r = EX[x.id]; if(!r) continue; const bad = r.s <= 1 ? 1 : r.s === 2 ? .5 : 0; for(const tg of x.tags || []) w[tg] = (w[tg] || 0) + bad; }
   return w;
+}
+/* Note estimée : part des points obtenus (poids = minutes de la question ; ✓ = 1, ½ = 0,5) puis courbe « % de points → note » tirée des rapports de jury
+   emlyon 2024-2025 (≈ 9-10 % → 5 · 20-26 % → 10 · 32-40 % → 15 · 54-63 % → 20) pour EDHEC/emlyon ;
+   ESSEC/HEC (≈ 18-21 % → 13 · 50-55 % → 20 ; Maths I : 20 entre 50 et 65 %) pour les parisiennes. Estimation, pas un barème officiel. */
+const CURVES = {prov: [[0, 0], [.095, 5.1], [.23, 10.1], [.36, 15], [.585, 20]], paris: [[0, 0], [.13, 10], [.2, 13], [.58, 20]]};
+const curveOf = p => /^(EDHEC|emlyon)$/.test(p.conc || "") ? "prov" : "paris";
+function noteFromFrac(f, key){
+  const c = CURVES[key]; if(f >= c[c.length - 1][0]) return 20;
+  for(let i = 1; i < c.length; i++) if(f <= c[i][0]){ const [x0, y0] = c[i - 1], [x1, y1] = c[i]; return y0 + (y1 - y0) * (f - x0) / (x1 - x0); }
+  return 20;
+}
+function pbNote(p, P, pend){
+  let tot = 0, got = 0, any = false;
+  for(const q of p.qs){
+    tot += q.min; const r = pend[q.id] != null ? pend[q.id] : (P[q.id] ? P[q.id].r : null);
+    if(r != null) any = true; if(r === 3) got += q.min; else if(r === 2) got += q.min * .5;
+  }
+  const f = tot ? got / tot : 0;
+  return {any, f, note: Math.round(noteFromFrac(f, curveOf(p)) * 2) / 2};
 }
 function pbProgress(p){
   const P = PQ[p.id] || {};
@@ -570,20 +593,20 @@ function planBox(kind){
 
 function renderEx(){
   const m = $("#main");
-  let h = planBox("ex");
-  h += `<section class="vu"><div class="block-title"><h2>Vu en classe</h2><span>${noneSeen() ? "rien coché : tout est proposé" : "les nouveaux exercices viennent de ces chapitres"}</span></div><div class="chips">` +
-    CH_ORDER.map(c => `<button class="chip" data-vu="${c}" aria-pressed="${!!(SET.seenCh || {})[c]}" title="${esc(CH[c])}">${c} · ${esc(CH[c].split(" (")[0])}</button>`).join("") + `</div></section>`;
+  let h = "";
   h += `<section><div class="block-title"><h2>Par chapitre</h2><span>${EXS.length} blocs de ≤ ${CAP} min</span></div><div class="chap">`;
+  let lastDom = null;
   for(const c of CH_ORDER){
     const xs = EXS.filter(x => x.ch === c); if(!xs.length) continue;
     const cats = xs.map(x => exCat(EX[x.id]));
     const seg = [[4, "var(--ok)"], [3, "var(--green)"], [2, "var(--redo)"], [1, "var(--miss)"], [0, "var(--blk)"]].map(([k, col]) => { const n = cats.filter(v => v === k).length; return n ? `<span style="width:${n / xs.length * 100}%;background:${col}"></span>` : ""; }).join("");
     const open = openCh === c;
-    h += `<button data-ch="${c}" aria-expanded="${open}"><span class="n">${c}</span><span class="ti">${CH[c]}</span><span class="go">›</span><span class="sub">${xs.length} blocs · ${cats.filter(v => v === 4).length} maîtrisés<span class="bar">${seg}</span></span></button>`;
+    if(lastDom !== DOM[c]){ lastDom = DOM[c]; h += `<div class="dom">${DOM[c]}</div>`; }
+    h += `<button data-ch="${c}" aria-expanded="${open}"><span class="n">${chNum(c)}</span><span class="ti">${CH[c]}</span><span class="go">›</span><span class="sub">${xs.length} blocs · ${cats.filter(v => v === 4).length} maîtrisés<span class="bar">${seg}</span></span></button>`;
     if(open){
       h += `<ul class="list">` + xs.sort((a, b) => (a.lvl || 2) - (b.lvl || 2) || a.year - b.year).map(x => {
         const r = EX[x.id], k = exCat(r);
-        const st = k < 0 ? `<span style="color:var(--faint)">pas fait</span>` : k === 4 ? `<span class="c4">maîtrisé</span>` : `<span class="c${k}">${S_LABEL[k].toLowerCase()}${k === 3 ? " " + r.n + "/3" : ""}</span><br><span style="color:var(--faint)">${r.due != null ? (r.due <= today0() ? "à reprendre" : "reprise " + fmtD(r.due)) : ""}</span>`;
+        const st = k < 0 ? `<span style="color:var(--faint)">pas fait</span>` : k === 4 ? `<span class="c4">maîtrisé</span>` : `<span class="c${k}">${S_LABEL[k].toLowerCase()}${k === 3 ? " " + r.n + "/3" : ""}</span>${r.due != null && r.due <= today0() ? `<br><span style="color:var(--faint)">à reprendre</span>` : ""}`;
         return `<li><a class="row st${k}" href="#x-${x.id}"><div><div class="t">${xt(x)}</div><div class="m">${stars(x.lvl)}<span>${esc(x.src)}</span><span>${TIER_NAME[tierOf(x)]}</span><span>${x.dur} min</span></div></div><div class="s">${st}</div></a></li>`;
       }).join("") + `</ul>`;
     }
@@ -601,7 +624,7 @@ function renderPb(){
     const dueN = p.qs.filter(q => P[q.id] && !P[q.id].done && P[q.id].due != null && P[q.id].due <= t).length;
     const cells = p.qs.map(q => { const o = P[q.id]; const c = !o ? "" : o.done ? "qd" : "q" + o.r; return `<i class="${c}${q.imp === 1 ? " imp" : ""}" title="${qn(q.id)}"></i>`; }).join("");
     const st = g.tried === 0 ? `<span style="color:var(--faint)">pas commencé</span>` : dueN ? `<span class="cbad">${dueN} question${dueN > 1 ? "s" : ""} à refaire</span>` : g.done === g.total ? `<span class="c4">acquis</span>` : `<span style="color:var(--muted)">${g.done}/${g.total} acquises</span>`;
-    h += `<li><a class="row" href="#p-${p.id}"><div><div class="t">${p.t}</div><div class="m">${stars(p.lvl)}<span>${esc(p.src)}</span><span>${p.dur} min · ${p.qs.length} questions</span></div><div class="m"><span class="qbar">${cells}</span></div></div><div class="s">${st}</div></a></li>`;
+    h += `<li><a class="row" href="#p-${p.id}"><div><div class="t">${p.t}</div><div class="m">${stars(p.lvl)}<span>${esc(p.src)}</span><span>${p.dur} min · ${p.qs.length} questions</span></div></div><div class="s">${st}</div></a></li>`;
   }
   h += `</ul></section>`;
   m.innerHTML = h; tex(m);
@@ -627,7 +650,7 @@ function sheetHTML(x){
   const isPb = x.kind === "pb";
   const seen = (x.seen || []);
   return `<article class="sheet">
-    <div class="sh-top"><a href="#${isPb ? "pb" : "ex"}">← ${isPb ? "Problèmes" : "Exercices"}</a><span>${isPb ? "Problème complet" : "Ch. " + x.ch + " · " + CH[x.ch]}</span></div>
+    <div class="sh-top"><a href="#${isPb ? "pb" : "ex"}">← ${isPb ? "Problèmes" : "Exercices"}</a><span>${isPb ? "Problème complet" : DOM[x.ch] + " · ch. " + chNum(x.ch) + " · " + CH[x.ch]}</span></div>
     <div class="sh-body">
       <div class="meta"><span class="src">${esc(x.src)}</span>${stars(x.lvl, true)}<span>${LV_NAME[x.lvl || 2]}</span><span>${TIER_NAME[tierOf(x)]}</span><span>temps cible ${x.dur} min</span>${seen.length ? `<button class="chipbtn" id="seenBtn" aria-expanded="false">Tombé dans · ${seen.length} <span class="ch">▾</span></button>` : ""}</div>
       ${seen.length ? `<ul class="seen" id="seenList" hidden>${seen.map(s => `<li>${esc(s[0])}<span>${esc(s[1])}</span></li>`).join("")}</ul>` : ""}
@@ -656,10 +679,10 @@ function renderWork(){
     <div class="thumbs" id="thumbs">${shots.map(s => `<img src="${s.url}" alt="">`).join("")}</div><div id="verdict">${verdictHTML()}</div></div>`;
   if(x.kind === "ex"){
     const r = EX[x.id];
-    const info = !r ? "Pas encore fait." : `Dernier résultat : ${S_LABEL[r.s].toLowerCase()} (${fmtD(r.last)})` + (exCat(r) === 4 ? " · maîtrisé." : r.slow ? " · réussi hors temps : refais-le dans le temps cible pour valider (" + fmtD(r.due) + ")." : r.due != null ? ` · prochaine reprise ${fmtD(r.due)}.` : "");
+    const info = !r ? "Pas encore fait." : `Dernier résultat : ${S_LABEL[r.s].toLowerCase()}` + (exCat(r) === 4 ? " · maîtrisé." : r.slow ? " · réussi hors temps : refais-le dans le temps cible pour valider." : ".");
     w.innerHTML = `<div><h3>Résultat de cette tentative</h3><p class="hint">${info}</p>
-      <p class="hint"><button class="chip" data-tt="1" aria-pressed="${inTime}">Fait dans le temps cible (≤ ${x.dur} min)</button> Coche-le avant d'enregistrer : la 3<sup>e</sup> réussite ne valide la maîtrise que dans le temps.</p></div>
-      <div class="acts">${[0, 1, 2, 3].map(s => `<button class="act a${s}${sugg && sugg.s === s ? " sugg" : ""}" data-s="${s}" aria-pressed="${!!(r && r.last === today0() && r.s === s)}"><span class="dot"></span>${S_LABEL[s]}<small>${s === 0 ? "rien su faire · demain" : s === 1 ? "J+2" : s === 2 ? "J+4" : "J+10, J+25"}</small></button>`).join("")}</div>` + copy;
+      <p class="hint"><button class="chip" data-tt="1" aria-pressed="${inTime}">Fait dans le temps cible (≤ ${x.dur} min)</button> Coche-le avant de noter : la 3<sup>e</sup> réussite ne valide que dans le temps.</p></div>
+      <div class="acts">${[0, 1, 2, 3].map(s => `<button class="act a${s}${sugg && sugg.s === s ? " sugg" : ""}" data-s="${s}" aria-pressed="${!!(r && r.last === today0() && r.s === s)}"><span class="dot"></span>${S_LABEL[s]}</button>`).join("")}</div>` + copy;
   } else {
     const P = PQ[x.id] || {}, t = today0();
     const rows = x.qs.map(q => {
@@ -680,6 +703,7 @@ function renderWork(){
     w.innerHTML = `<div><h3>Tes questions</h3><p class="hint">Après correction, note chaque question traitée aujourd'hui, puis enregistre. Les ★ sont les questions classiques à savoir refaire.</p></div>
       <div class="qlegend"><span><b>✓</b> juste</span><span><b>½</b> partiel</span><span><b>✗</b> faux</span><span><b>NT</b> non traité</span></div>
       <div class="qs">${rows}</div>
+      ${(() => { const n = pbNote(x, P, pending); return n.any ? `<div class="notebox"><b>Note estimée au concours : ${String(n.note).replace(".", ",")} / 20</b><small>${Math.round(n.f * 100)} % des points · questions non notées = 0 · estimation d'après les rapports de jury ${curveOf(x) === "prov" ? "emlyon/EDHEC" : "ESSEC/HEC"}</small></div>` : ""; })()}
       <div class="row-btns"><button class="btn-ink" id="saveQ" ${Object.keys(pending).length ? "" : "disabled"}>Enregistrer la séance (${Object.keys(pending).length})</button></div>${nt}` + copy;
   }
   tex(w);
@@ -688,7 +712,6 @@ function renderWork(){
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if(!b) return;
   if(b.dataset.b){ const v = +b.dataset.b; if(tab === "ex") SET.bEx = v; else SET.bPb = v; save("settings", "main", SET); render(); return; }
-  if(b.dataset.vu){ const c = b.dataset.vu; SET.seenCh = {...(SET.seenCh || {}), [c]: !(SET.seenCh || {})[c]}; save("settings", "main", SET); renderEx(); return; }
   if(b.dataset.tt){ inTime = !inTime; renderWork(); return; }
   if(b.dataset.ch){ const c = +b.dataset.ch; openCh = openCh === c ? null : c; renderEx(); return; }
   if(b.dataset.del){ const id = b.dataset.del; delete CN[id]; save("carnet2", id, null); renderCarnet(); counts(); return; }
@@ -839,13 +862,13 @@ function render(){
   counts();
   document.querySelectorAll(".nav a").forEach(a => a.setAttribute("aria-current", a.dataset.tab === tab && !cur ? "page" : a.dataset.tab === tab ? "page" : "false"));
   if(cur) return;
-  if(tab === "ex") renderEx(); else if(tab === "pb") renderPb(); else if(tab === "atelier") renderAtelier(); else renderCarnet();
+  if(tab === "ex") renderEx(); else if(tab === "pb") renderPb(); else renderCarnet();
 }
 function route(){
   const h = location.hash.slice(1);
   cur = null;
   if(h.startsWith("x-") || h.startsWith("p-")){ const id = h.slice(2); tab = h[0] === "x" ? "ex" : "pb"; counts(); document.querySelectorAll(".nav a").forEach(a => a.setAttribute("aria-current", a.dataset.tab === tab ? "page" : "false")); openItem(id); return; }
-  tab = h === "pb" ? "pb" : h === "carnet" ? "carnet" : h === "atelier" ? "atelier" : "ex";
+  tab = h === "pb" ? "pb" : h === "carnet" ? "carnet" : "ex";
   render();
 }
 window.addEventListener("hashchange", route);
